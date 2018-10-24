@@ -1,6 +1,7 @@
-FROM alpine:3.6
+FROM alpine:3.8
 MAINTAINER Anton Wahyu <mail@anton.web.id>
 
+ENV WKHTMLTOPDF_VERSION=ccf91a0
 # install qt build packages #
 RUN echo "http://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories \
 	&& apk update \
@@ -15,7 +16,7 @@ RUN echo "http://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/reposit
 		libxxf86vm-dev libxshmfence-dev wayland-dev mesa-dev openssl-dev \
 	&& git clone --recursive https://github.com/wkhtmltopdf/wkhtmltopdf.git /tmp/wkhtmltopdf \
 	&& cd /tmp/wkhtmltopdf \
-	&& git checkout ccf91a0
+	&& git checkout $WKHTMLTOPDF_VERSION
 
 COPY conf/* /tmp/wkhtmltopdf/qt/
 
@@ -23,7 +24,6 @@ RUN	cd /tmp/wkhtmltopdf/qt && \
 	patch -p1 -i qt-musl.patch && \
 	patch -p1 -i qt-musl-iconv-no-bom.patch && \
 	patch -p1 -i qt-recursive-global-mutex.patch && \
-	patch -p1 -i qt-font-pixel-size.patch && \
 	patch -p1 -i qt-gcc6.patch && \
 	sed -i "s|-O2|$CXXFLAGS|" mkspecs/common/g++.conf && \
 	sed -i "/^QMAKE_RPATH/s| -Wl,-rpath,||g" mkspecs/common/g++.conf && \
@@ -76,11 +76,11 @@ RUN	cd /tmp/wkhtmltopdf/qt && \
 	make --silent && \
 	make install && \
 	cd /tmp/wkhtmltopdf && \
+	sed -i -E "s|(.*)|\1@$WKHTMLTOPDF_VERSION" && \
 	qmake && \
 	make --silent && \
 	make install && \
-	rm -rf /tmp/*
-
-# remove qt build packages #
-RUN apk del .deps \
+	rm -rf /tmp/* \
+	# remove qt build packages #
+	&& apk del .deps \
 	&& rm -rf /var/cache/apk/*
